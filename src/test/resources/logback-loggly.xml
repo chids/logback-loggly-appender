@@ -1,0 +1,12 @@
+<configuration>
+    <appender name="loggly" class="se.pp.gustafson.marten.logback.appender.LogglyAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <endpoint>https://logs.loggly.com/inputs/13534a80-5beb-4055-8c9a-657261d6593c</endpoint>
+    </appender>
+
+    <root level="ALL">
+        <appender-ref ref="loggly" />
+    </root>
+</configuration>
