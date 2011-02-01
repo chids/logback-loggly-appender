@@ -1,45 +1,59 @@
 package se.pp.gustafson.marten.logback.appender;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import ch.qos.logback.classic.net.LoggingEventPreSerializationTransformer;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
-import ch.qos.logback.core.spi.PreSerializationTransformer;
 
 public final class LogglyAppender extends AppenderBase<ILoggingEvent>
 {
-    private final PreSerializationTransformer<ILoggingEvent> pst = new LoggingEventPreSerializationTransformer();
     private URL endpoint;
+    private LogglyPoster poster;
+    private int eventQueueSize;
+    SloppyCircularBuffer<ILoggingEvent> queue;
 
     @Override
     protected void append(final ILoggingEvent event)
     {
-        try
+        this.queue.enqueue(event);
+    }
+
+    @Override
+    public void start()
+    {
+        super.start();
+        if(this.endpoint == null)
         {
-            System.err.println(event.getFormattedMessage());
-            final HttpURLConnection connection = (HttpURLConnection)this.endpoint.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-            connection.connect();
-            final OutputStream os = connection.getOutputStream();
-            os.write(event.getFormattedMessage().getBytes());
-            os.close();
-            connection.disconnect();
+            System.err.println("No endpoint, can't start");
         }
-        catch(IOException e)
+        else
         {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        this.queue = new SloppyCircularBuffer<ILoggingEvent>(Math.max(1, this.eventQueueSize));
+        this.poster = new LogglyPoster(this);
+        this.poster.start();
         }
+    }
+
+    @Override
+    public void stop()
+    {
+        this.poster.interrupt();
+        super.stop();
     }
 
     public void setEndpoint(final String endpoint) throws MalformedURLException
     {
         this.endpoint = new URL(endpoint);
+    }
+
+    public URL getEndpointUrl()
+    {
+        return this.endpoint;
+    }
+
+    public void setQueueSize(final int maxSize)
+    {
+        this.eventQueueSize = maxSize;
     }
 }

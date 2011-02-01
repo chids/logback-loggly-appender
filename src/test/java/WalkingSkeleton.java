@@ -1,12 +1,12 @@
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.net.InetAddress;
 import java.net.URL;
-import java.net.UnknownHostException;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +17,7 @@ import ch.qos.logback.core.joran.spi.JoranException;
 public class WalkingSkeleton
 {
     @Test
-    public void configuredWithFile() throws UnknownHostException
+    public void configuredWithFile() throws Exception
     {
         final URL url = getClass().getClassLoader().getResource("logback-loggly.xml");
         try
@@ -32,7 +32,10 @@ public class WalkingSkeleton
             fail(e.getMessage());
         }
         final Logger root = this.context.getLogger(getClass());
-        root.error(InetAddress.getLocalHost().getHostAddress() +  " - whoho");
+        root.error(InetAddress.getLocalHost().getHostAddress() + " - whoho");
+        root.error(InetAddress.getLocalHost().getHostAddress() + " - foo");
+        root.error(InetAddress.getLocalHost().getHostAddress() + " - bar!");
+        System.in.read();
     }
 
     @After
