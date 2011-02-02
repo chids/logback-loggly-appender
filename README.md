@@ -1,1 +1,1 @@
-Please not that the Loggly endpoint in the sample config file doesn't work, supply your own key.
+Please note that the Loggly endpoint in the sample config file doesn't work, supply your own key.
