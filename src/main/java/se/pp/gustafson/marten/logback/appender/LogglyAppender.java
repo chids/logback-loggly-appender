@@ -5,33 +5,41 @@ import java.net.URL;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
+import ch.qos.logback.core.Layout;
 
 public final class LogglyAppender extends AppenderBase<ILoggingEvent>
 {
     private URL endpoint;
     private LogglyPoster poster;
     private int eventQueueSize;
-    SloppyCircularBuffer<ILoggingEvent> queue;
+    private SloppyCircularBuffer<String> queue;
+    private Layout<ILoggingEvent> layout;
 
     @Override
     protected void append(final ILoggingEvent event)
     {
-        this.queue.enqueue(event);
+        this.queue.enqueue(this.layout.doLayout(event));
     }
 
     @Override
     public void start()
     {
-        super.start();
         if(this.endpoint == null)
         {
-            System.err.println("No endpoint, can't start");
+            super.addError("No endpoint set for appender [" + super.name + "].");
+        }
+        else if(this.layout == null)
+        {
+            super.addError("No layout set for appender [" + super.name + "].");
         }
         else
         {
-        this.queue = new SloppyCircularBuffer<ILoggingEvent>(Math.max(1, this.eventQueueSize));
-        this.poster = new LogglyPoster(this);
-        this.poster.start();
+            final int queueSize = Math.max(1, this.eventQueueSize);
+            this.queue = new SloppyCircularBuffer<String>(queueSize);
+            this.poster = new LogglyPoster(this.endpoint, this.queue);
+            this.poster.start();
+            super.start();
+            super.addInfo("Appender [" + super.name + "] started with a queue size of " + queueSize);
         }
     }
 
@@ -47,13 +55,18 @@ public final class LogglyAppender extends AppenderBase<ILoggingEvent>
         this.endpoint = new URL(endpoint);
     }
 
-    public URL getEndpointUrl()
-    {
-        return this.endpoint;
-    }
-
     public void setQueueSize(final int maxSize)
     {
         this.eventQueueSize = maxSize;
+    }
+
+    public Layout<ILoggingEvent> getLayout()
+    {
+        return this.layout;
+    }
+
+    public void setLayout(final Layout<ILoggingEvent> layout)
+    {
+        this.layout = layout;
     }
 }

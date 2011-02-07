@@ -22,13 +22,14 @@ public class WalkingSkeleton
         final URL url = getClass().getClassLoader().getResource("logback-loggly.xml");
         try
         {
+            this.context.reset();
             final JoranConfigurator configurator = new JoranConfigurator();
             configurator.setContext(this.context);
-            this.context.reset();
             configurator.doConfigure(new File(url.getFile()));
         }
         catch(final JoranException e)
         {
+            e.printStackTrace();
             fail(e.getMessage());
         }
         final Logger root = this.context.getLogger(getClass());
