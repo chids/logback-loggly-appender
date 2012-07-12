@@ -8,17 +8,35 @@ import java.net.URL;
 
 public final class LogglyPoster extends Thread
 {
-
+    private int numRetries = 3;
+    private long timeoutInMillis = 3000l;
     private final SloppyCircularBuffer<String> queue;
     private final URL endpoint;
+    private String strEndpoint;
 
-    public LogglyPoster(final URL enpoint, final SloppyCircularBuffer<String> queue)
+    public LogglyPoster(final URL endpoint, String strEndpoint, final SloppyCircularBuffer<String> queue)
+    {
+        super.setName(getClass().getSimpleName());
+        super.setDaemon(true);
+        this.endpoint = endpoint;
+        this.strEndpoint = strEndpoint;
+        this.queue = queue;
+    }
+    
+     public LogglyPoster(final URL enpoint,
+                         final String strEndpoint,
+                         final SloppyCircularBuffer<String> queue,
+                         final int numTries,
+                         final long timeoutInMillis)
     {
         super.setName(getClass().getSimpleName());
         super.setDaemon(true);
         this.endpoint = enpoint;
+        this.strEndpoint = strEndpoint;
         this.queue = queue;
-    }
+        this.numRetries = numTries;
+        this.timeoutInMillis = timeoutInMillis;
+    }   
 
     @Override
     public void run()
@@ -39,25 +57,57 @@ public final class LogglyPoster extends Thread
 
     private void post(final String event)
     {
-        try
-        {
-            final HttpURLConnection connection = (HttpURLConnection)this.endpoint.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-            connection.connect();
-            sendAndClose(event, connection.getOutputStream());
-            connection.disconnect();
-            final int result = connection.getResponseCode();
-            if(2 != (result / 100))
+        int retryNo = 0;
+        int numRetries = this.numRetries;
+        
+        do {
+            try
             {
-                final String message = readResponseBody(connection.getInputStream());
-                System.err.println("Failed with code: " + result + "\n" + message);
+                final HttpURLConnection connection = (HttpURLConnection)this.endpoint.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);
+                connection.connect();
+                sendAndClose(event, connection.getOutputStream());
+                connection.disconnect();
+                final int result = connection.getResponseCode();
+
+                // for any http code not in the 200 range (200..300) print an error
+                if(2 != (result / 100))
+                {
+                    final String message = readResponseBody(connection.getInputStream());
+                    System.err.println("Failed with HTTP error code: " + result + "\n" + message);
+                }
+                else
+                {
+                    // success - exit the for loop
+                    return;
+                }
             }
+            catch(final IOException e)
+            {
+                e.printStackTrace();
+                System.err.println("URL: "+this.strEndpoint+" Payload: "+event);
+            }
+            
+            if (timeoutInMillis > 0) {
+                try {
+                    int thresholdOffset = (int)(Math.random() * timeoutInMillis);
+                    int dir = (int)(Math.random() * 2);
+                    if (dir == 0) {
+                        dir = -1;
+                    }
+                    
+                    System.out.println("sleeping for "+(timeoutInMillis + (dir * thresholdOffset))+" milliseconds");
+                    Thread.sleep(timeoutInMillis + (dir * thresholdOffset));
+                } catch (InterruptedException ie) {
+                    
+                }
+            }
+            
+            System.err.println("retry #"+(retryNo + 1));
+            retryNo++;
         }
-        catch(final IOException e)
-        {
-            e.printStackTrace();
-        }
+        while (retryNo < numRetries);
     }
 
     private String readResponseBody(final InputStream input) throws IOException
