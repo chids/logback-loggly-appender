@@ -14,6 +14,8 @@ public final class LogglyAppender extends AppenderBase<ILoggingEvent>
     private int eventQueueSize;
     private SloppyCircularBuffer<String> queue;
     private Layout<ILoggingEvent> layout;
+    private int retries = 3;
+    private long retryTimout = 3000l;
 
     @Override
     protected void append(final ILoggingEvent event)
@@ -36,7 +38,7 @@ public final class LogglyAppender extends AppenderBase<ILoggingEvent>
         {
             final int queueSize = Math.max(1, this.eventQueueSize);
             this.queue = new SloppyCircularBuffer<String>(queueSize);
-            this.poster = new LogglyPoster(this.endpoint, this.queue);
+            this.poster = new LogglyPoster(this.endpoint, this.queue, this.retries, this.retryTimout);
             this.poster.start();
             super.start();
             super.addInfo("Appender [" + super.name + "] started with a queue size of " + queueSize);
@@ -68,5 +70,13 @@ public final class LogglyAppender extends AppenderBase<ILoggingEvent>
     public void setLayout(final Layout<ILoggingEvent> layout)
     {
         this.layout = layout;
+    }
+    
+    public void setTimeoutInMillis(long timeoutInMillis) {
+        this.retryTimout = timeoutInMillis;
+    }
+    
+    public void setNumRetries(int numRetries) {
+        this.retries = numRetries;
     }
 }
