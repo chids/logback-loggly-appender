@@ -28,7 +28,6 @@ public final class LogglyPoster extends Thread
             while(!super.isInterrupted())
             {
                 post(this.queue.dequeue());
-                Thread.yield();
             }
         }
         catch(final InterruptedException e)

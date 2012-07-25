@@ -26,7 +26,7 @@ public final class SloppyCircularBuffer<Item>
      */
     public void enqueue(final Item item)
     {
-        for(; !this.queue.offer(item); this.queue.poll(), Thread.yield());
+        for(; !this.queue.offer(item); this.queue.poll());
     }
 
     /**
